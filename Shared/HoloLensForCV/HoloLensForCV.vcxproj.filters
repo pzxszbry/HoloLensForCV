@@ -50,6 +50,15 @@
     </ClCompile>
     <ClCompile Include="CameraIntrinsics.cpp" />
     <ClCompile Include="MultiFrameBuffer.cpp" />
+    <ClCompile Include="ROSSensorFrameStreamHeader.cpp">
+      <Filter>Sensor Frame Streaming</Filter>
+    </ClCompile>
+    <ClCompile Include="ROSSensorFrameStreamingServer.cpp">
+      <Filter>Sensor Frame Streaming</Filter>
+    </ClCompile>
+    <ClCompile Include="ROSSensorFrameStreamer.cpp">
+      <Filter>Sensor Frame Streaming</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -91,8 +100,18 @@
     <ClInclude Include="CameraIntrinsics.h" />
     <ClInclude Include="ICameraIntrinsics.h" />
     <ClInclude Include="MultiFrameBuffer.h" />
+    <ClInclude Include="ROSSensorFrameStreamHeader.h">
+      <Filter>Sensor Frame Streaming</Filter>
+    </ClInclude>
+    <ClInclude Include="ROSSensorFrameStreamingServer.h">
+      <Filter>Sensor Frame Streaming</Filter>
+    </ClInclude>
+    <ClInclude Include="ROSSensorFrameStreamer.h">
+      <Filter>Sensor Frame Streaming</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

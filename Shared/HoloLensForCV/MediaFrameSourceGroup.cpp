@@ -495,19 +495,30 @@ namespace HoloLensForCV
         switch (kind)
         {
         case Windows::Media::Capture::Frames::MediaFrameSourceKind::Color:
-#if DBG_ENABLE_INFORMATIONAL_LOGGING
-            dbg::trace(
-                L"MediaFrameSourceGroup::GetSubtypeForFrameReader: evaluating MediaFrameSourceKind::Color with format %s-%s @%i/%iHz",
-                format->MajorType->Data(),
-                format->Subtype->Data(),
-                format->FrameRate->Numerator,
-                format->FrameRate->Denominator);
-#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-
             //
             // For color sources, we accept anything and request that it be converted to Bgra8.
             //
-            return Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8;
+            //return Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8;
+            //if (format->VideoFormat->Width == 1280 && format->VideoFormat->Height == 720)
+            if (format->VideoFormat->Width == 896 && format->VideoFormat->Height == 385)
+            {
+#if DBG_ENABLE_INFORMATIONAL_LOGGING
+                dbg::trace(
+                    L"MediaFrameSourceGroup::GetSubtypeForFrameReader: evaluating MediaFrameSourceKind::Color with format %s-%s @%i/%iHz, Height %i, Width: %i",
+                    format->MajorType->Data(),
+                    format->Subtype->Data(),
+                    format->FrameRate->Numerator,
+                    format->FrameRate->Denominator,
+                    format->VideoFormat->Height,
+                    format->VideoFormat->Width);
+#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
+                return Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8;
+            }
+            else
+            {
+                return nullptr;
+            }
+            //return (format->VideoFormat->Width == 1344) ? Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8 : nullptr;
 
 #if ENABLE_HOLOLENS_RESEARCH_MODE_SENSORS
         case Windows::Media::Capture::Frames::MediaFrameSourceKind::Depth:

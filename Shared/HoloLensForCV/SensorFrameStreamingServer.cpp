@@ -50,10 +50,6 @@ namespace HoloLensForCV
 
     SensorFrameStreamingServer::~SensorFrameStreamingServer()
     {
-        // The listener can be closed in two ways:
-        //  - explicit: by using delete operator (the listener is closed even if there are outstanding references to it).
-        //  - implicit: by removing last reference to it (i.e. falling out-of-scope).
-        // In this case this is the last reference to the listener so both will yield the same result.
         delete _listener;
         _listener = nullptr;
     }

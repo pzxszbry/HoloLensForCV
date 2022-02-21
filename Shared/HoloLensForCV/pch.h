@@ -69,3 +69,10 @@
 #include "MediaFrameSourceGroup.h"
 
 #include "MultiFrameBuffer.h"
+
+#include "ROSSensorFrameStreamHeader.h"
+#include "ROSSensorFrameStreamingServer.h"
+#include "ROSSensorFrameStreamer.h"
+
+#include "opencv2/core.hpp"
+#include "opencv2/imgproc.hpp"
