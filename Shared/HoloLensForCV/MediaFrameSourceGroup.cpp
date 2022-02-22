@@ -500,25 +500,26 @@ namespace HoloLensForCV
             //
             //return Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8;
             //if (format->VideoFormat->Width == 1280 && format->VideoFormat->Height == 720)
-            if (format->VideoFormat->Width == 896 && format->VideoFormat->Height == 385)
+            if (format->VideoFormat->Width == 896 && format->VideoFormat->Height == 504)
+                //if (true)
             {
 #if DBG_ENABLE_INFORMATIONAL_LOGGING
                 dbg::trace(
-                    L"MediaFrameSourceGroup::GetSubtypeForFrameReader: evaluating MediaFrameSourceKind::Color with format %s-%s @%i/%iHz, Height %i, Width: %i",
+                    L"MediaFrameSourceGroup::GetSubtypeForFrameReader: evaluating MediaFrameSourceKind::Color with format %s-%s @%i/%iHz and resolution %i x %i",
                     format->MajorType->Data(),
                     format->Subtype->Data(),
                     format->FrameRate->Numerator,
                     format->FrameRate->Denominator,
-                    format->VideoFormat->Height,
-                    format->VideoFormat->Width);
+                    format->VideoFormat->Width,
+                    format->VideoFormat->Height);
 #endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
+
                 return Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8;
             }
             else
             {
                 return nullptr;
             }
-            //return (format->VideoFormat->Width == 1344) ? Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8 : nullptr;
 
 #if ENABLE_HOLOLENS_RESEARCH_MODE_SENSORS
         case Windows::Media::Capture::Frames::MediaFrameSourceKind::Depth:
