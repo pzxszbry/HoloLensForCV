@@ -79,7 +79,7 @@ namespace HoloLensForCV
 #if DBG_ENABLE_INFORMATIONAL_LOGGING
         dbg::TimerGuard timerGuard(
             L"ROSSensorFrameStreamingServer::Send: buffer prepare operation",
-            5.0 /* minimum_time_elapsed_in_milliseconds */);
+            10.0 /* minimum_time_elapsed_in_milliseconds */);
 #endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
 
         Windows::Graphics::Imaging::SoftwareBitmap^ bitmap;
@@ -92,8 +92,8 @@ namespace HoloLensForCV
 
         // for OpenCV
         cv::Mat wrappedImage;
-        int32_t wrappedImageType = CV_8UC1;
         int32_t pixelStride = 1;
+        double_t resizeScale = 0.5;
 
         {
             bitmap = sensorFrame->SoftwareBitmap;
@@ -107,35 +107,53 @@ namespace HoloLensForCV
                     bitmapBuffer->CreateReference(),
                     imageBufferSize);
 
+            /// <summary>
+            /// bitmapBufferRawData
+            /// </summary>
+            /// <param name="sensorFrame"></param>
+            //byte* bitmapBufferRawData = nullptr;
+            //Microsoft::WRL::ComPtr<Windows::Foundation::IMemoryBufferByteAccess> bufferByteAccess;
+            //ASSERT_SUCCEEDED(reinterpret_cast<IInspectable*>(bitmapBuffer->CreateReference())->QueryInterface(
+            //    IID_PPV_ARGS(&bufferByteAccess)));
+            //ASSERT_SUCCEEDED(bufferByteAccess->GetBuffer(&bitmapBufferRawData,&imageRawBufferSize));
+
             switch (bitmap->BitmapPixelFormat)
             {
 
                 case Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8:
                     pixelStride = 4;
-                    wrappedImageType = CV_8UC4;
+                    wrappedImage = cv::Mat(
+                        bitmap->PixelHeight,
+                        bitmap->PixelWidth,
+                        CV_8UC4,
+                        bitmapBufferData);
+
+                    cv::resize(wrappedImage, wrappedImage, cv::Size(), resizeScale, resizeScale, cv::INTER_LINEAR);
+                    cv::cvtColor(wrappedImage, wrappedImage, cv::COLOR_BGRA2BGR);
+                    imageBufferSize = wrappedImage.total() * wrappedImage.elemSize();
+                    
                     break;
 
                 case Windows::Graphics::Imaging::BitmapPixelFormat::Gray16:
                     pixelStride = 2;
-                    wrappedImageType = CV_16UC1;
+                    wrappedImage = cv::Mat(
+                        bitmap->PixelHeight,
+                        bitmap->PixelWidth,
+                        CV_16UC1,
+                        bitmapBufferData);
+
                     break;
 
                 default:
-#if DBG_ENABLE_INFORMATIONAL_LOGGING
-                dbg::trace(
-                    L"ROSSensorFrameStreamingServer::Send: unrecognized bitmap pixel format, assuming 1 byte per pixel");
-#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-
                     pixelStride = 1;
-                    wrappedImageType = CV_8UC1;
+                    wrappedImage = cv::Mat(
+                        bitmap->PixelHeight,
+                        bitmap->PixelWidth,
+                        CV_8UC1,
+                        bitmapBufferData);
+
                     break;
             }
-
-            wrappedImage = cv::Mat(
-                bitmap->PixelHeight,
-                bitmap->PixelWidth,
-                wrappedImageType,
-                bitmapBufferData);
 
             imageBufferAsPlatformArray =
                 ref new Platform::Array<uint8_t>(
@@ -147,10 +165,10 @@ namespace HoloLensForCV
 
         {
             _writer->WriteUInt64(sensorFrame->Timestamp.UniversalTime);
-            _writer->WriteUInt32(bitmap->PixelWidth);
-            _writer->WriteUInt32(bitmap->PixelHeight);
-            _writer->WriteUInt32(pixelStride);
-            _writer->WriteUInt32((uint32_t)imageBufferSize);
+            _writer->WriteUInt32(wrappedImage.cols);
+            _writer->WriteUInt32(wrappedImage.rows);
+            _writer->WriteUInt32(wrappedImage.elemSize());
+            _writer->WriteUInt32(imageBufferSize);
             _writer->WriteBytes(imageBufferAsPlatformArray);
         }
 
@@ -175,79 +193,5 @@ namespace HoloLensForCV
                     _socket = nullptr;
                 }
             });
-
-        //SendImage(header,imageBufferAsPlatformArray);
     }
-
-//    void ROSSensorFrameStreamingServer::SendImage(
-//        ROSSensorFrameStreamHeader^ header,
-//        const Platform::Array<uint8_t>^ imageBytesData)
-//    {
-//        if (nullptr == _socket)
-//        {
-//#if DBG_ENABLE_VERBOSE_LOGGING
-//            dbg::trace(
-//                L"ROSSensorFrameStreamingServer::SendImage: image dropped -- no connection!");
-//#endif /* DBG_ENABLE_VERBOSE_LOGGING */
-//
-//            return;
-//        }
-//
-//        if (_writeInProgress)
-//        {
-//#if DBG_ENABLE_INFORMATIONAL_LOGGING
-//            dbg::trace(
-//                L"ROSSensorFrameStreamingServer::SendImage: image dropped -- previous StoreAsync task is still in progress!");
-//#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-//
-//            return;
-//        }
-//
-//        _writeInProgress = true;
-//
-//        {
-//#if DBG_ENABLE_INFORMATIONAL_LOGGING
-//            dbg::TimerGuard timerGuard(
-//                L"ROSSensorFrameStreamingServer::SendImage: buffer write operation",
-//                0.0 /* minimum_time_elapsed_in_milliseconds */);
-//#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-//
-//            //ROSSensorFrameStreamHeader::Write(header,_writer);
-//
-//            _writer->WriteUInt64(header->Timestamp);
-//            _writer->WriteUInt32(header->ImageWidth);
-//            _writer->WriteUInt32(header->ImageHeight);
-//            _writer->WriteUInt32(header->PixelStride);
-//            _writer->WriteUInt32(header->BytesLenght);
-//            _writer->WriteBytes(imageBytesData);
-//        }
-//
-//#if DBG_ENABLE_INFORMATIONAL_LOGGING
-//        dbg::TimerGuard timerGuard(
-//            L"ROSSensorFrameStreamingServer::SendImage: StoreAsync task creation",
-//            0.0 /* minimum_time_elapsed_in_milliseconds */);
-//#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-//
-//        Concurrency::create_task(_writer->StoreAsync()).then(
-//            [&](Concurrency::task<unsigned int> writeTask)
-//            {
-//                try
-//                {
-//                    // Try getting an exception.
-//                    writeTask.get();
-//
-//                    _writeInProgress = false;
-//                }
-//                catch (Platform::Exception^ exception)
-//                {
-//#if DBG_ENABLE_ERROR_LOGGING
-//                    dbg::trace(
-//                        L"ROSSensorFrameStreamingServer::SendImage: StoreAsync call failed with error: %s",
-//                        exception->Message->Data());
-//#endif /* DBG_ENABLE_ERROR_LOGGING */
-//
-//                    _socket = nullptr;
-//                }
-//            });
-//    }
 }
