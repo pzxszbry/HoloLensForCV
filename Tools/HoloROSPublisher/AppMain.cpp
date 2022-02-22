@@ -250,18 +250,19 @@ namespace HoloROSPublisher
                 HoloLensForCV::MediaFrameSourceGroupType::HoloLensResearchModeSensors,
                 _spatialPerception, _sensorFrameStreamer);
 
+        // Enable each sensor
         for (const auto enabledSensorType : kEnabledSensorTypes)
         {
             if (enabledSensorType == HoloLensForCV::SensorType::PhotoVideo)
             {
                 _photoVideoMediaFrameSourceGroup->Enable(enabledSensorType);
-                _sensorFrameStreamer->Enable(enabledSensorType);
             }
             else
             {
                 _researchModeMediaFrameSourceGroup->Enable(enabledSensorType);
-                _sensorFrameStreamer->Enable(enabledSensorType);
             }
+
+            _sensorFrameStreamer->Enable(enabledSensorType);
         }
 
         concurrency::create_task(_photoVideoMediaFrameSourceGroup->StartAsync()).then([&]() 

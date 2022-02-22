@@ -19,10 +19,6 @@ namespace HoloLensForCV
             Windows::Networking::Sockets::StreamSocketListener^ listener,
             Windows::Networking::Sockets::StreamSocketListenerConnectionReceivedEventArgs^ object);
 
-        //void SendImage(
-        //    ROSSensorFrameStreamHeader^ header,
-        //    const Platform::Array<uint8_t>^ imageBytesData);
-
     private:
         Windows::Networking::Sockets::StreamSocketListener^ _listener;
         Windows::Networking::Sockets::StreamSocket^ _socket;
