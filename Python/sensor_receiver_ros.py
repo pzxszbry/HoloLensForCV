@@ -1,26 +1,23 @@
-import argparse
-import code
-import socket
 import sys
-import binascii
+import argparse
+import socket
 import struct
 from collections import namedtuple
 import cv2
 import numpy as np
 import multiprocessing
-import time
 
 # Each port corresponds to a single stream type
 STREAM_PORTS = {
-    "photovideo": 10080,
-    "shortthrowdepth": 10081,
+    "color": 10080,
+    "depth": 10081
 }
 
 SENSOR_STREAM_HEADER_FORMAT = "@qIIII"
 
 SENSOR_FRAME_STREAM_HEADER = namedtuple(
     'SensorFrameStreamHeader',
-    ['Timestamp', 'ImageWidth', 'ImageHeight', 'PixelStride', 'BytesLength']
+    [ 'Timestamp', 'ImageWidth', 'ImageHeight', 'PixelStride', 'BytesLength']
 )
 
 def parse_args():
@@ -28,37 +25,34 @@ def parse_args():
     parser.add_argument("--host",
                     help="Host address to connect", default="192.168.50.202")
     parser.add_argument("--type",
-                    help="sensor type", default="PhotoVideo")
+                    help="sensor type", default="color")
     args = parser.parse_args()
+
     return args
 
 
-def main(sensor_type):
+def main(host, sensor_type):
     """Receiver main"""
-    args = parse_args()
-    STREAM_PORT = STREAM_PORTS[sensor_type]
+    port = STREAM_PORTS[sensor_type]
 
     # Create a TCP Stream socket
     try:
         ss = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        print('=> INFO: socket created')
+        print('=> [INFO]: Socket create success')
     except socket.error as msg:
-        print("=> ERROR: Failed to create socket. {}".format(msg))
+        print("=> [ERROR]: Failed to create socket!!! {}".format(msg))
         sys.exit()
 
     # Try connecting to the address 'ip_addr:port'
-    ss.connect((args.host, STREAM_PORT))
-    print("=> INFO: Socket Connected to {ip_addr}:{port}".format(ip_addr=args.host, port=STREAM_PORT))
+    ss.connect((host, port))
+    print("=> [INFO]: Socket connected to {}:{}".format(host, port))
 
     # Try receive data
-    start_time = time.time()
-    image_count = 0
-
     try:
         while True:
             reply = ss.recv(struct.calcsize(SENSOR_STREAM_HEADER_FORMAT))
             if not reply:
-                print('ERROR: Failed to receive data')
+                print('=> [ERROR]: Failed to receive data!!!')
                 sys.exit()
 
             data = struct.unpack(SENSOR_STREAM_HEADER_FORMAT, reply)
@@ -67,61 +61,61 @@ def main(sensor_type):
             header = SENSOR_FRAME_STREAM_HEADER(*data)
 
             # Record the meta data
+            timeStamp = header.Timestamp
             imageHeight = header.ImageHeight
             imageWidth = header.ImageWidth
             pixelStride = header.PixelStride
             bytesLength = header.BytesLength
-            print("bytesLength:", bytesLength)
 
             # Read the image in chunks
-            # image_size_bytes = header.RowStride
-            # image_size_bytes = imageHeight * imageWidth * pixelStride
             image_data = b""
-
             while len(image_data) < bytesLength:
                 remaining_bytes = bytesLength - len(image_data)
                 image_data_chunk = ss.recv(remaining_bytes)
                 if not image_data_chunk:
-                    print('ERROR: Failed to receive image data')
+                    print('=> [ERROR]: Failed to receive image data')
                     sys.exit()
                 image_data += image_data_chunk
 
-            # depth image
+            # Depth image
             if pixelStride==2:
+                # image_array = np.frombuffer(image_data, dtype=np.uint16).copy().byteswap(True)
                 image_array = np.frombuffer(image_data, dtype=np.uint16).copy()
-                image_array = image_array.byteswap(True).reshape((
-                    header.ImageHeight,
-                    header.ImageWidth, -1))
+                image_array = image_array.reshape((imageHeight, imageWidth, -1))
+                cv2.imwrite("./out/depth_{}.png".format(timeStamp), image_array)
                 image_array = cv2.applyColorMap(cv2.convertScaleAbs(image_array), cv2.COLORMAP_JET)
-
-            # color image
-            # if pixelStride==4:
-            else:
+                print("=> [INFO]: Depth image received: {} bits, {}".format(bytesLength, image_array.shape))
+            
+            # Color image BGRA8
+            if pixelStride==4:
                 image_array = np.frombuffer(image_data, dtype=np.uint8).copy()
-                image_array = image_array.reshape((
-                    imageHeight,
-                    imageWidth, -1))
+                image_array = image_array.reshape((imageHeight, imageWidth, -1))
+                # image_array = cv2.cvtColor(image_array, cv2.COLOR_BGRA2BGR)
+                cv2.imwrite("./out/color_{}.png".format(timeStamp), image_array)
+                print("=> [INFO]: Color image received: {} bits, {}".format(bytesLength, image_array.shape))
 
-            cv2.imshow('Streaming', image_array)
-
+            # Display image
+            cv2.imshow('Stream Preview', image_array)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-        
     except KeyboardInterrupt:
         pass
 
-    ss.close()
     cv2.destroyAllWindows()
+    ss.close()
+    print('=> [INFO]: Socket close success')
 
 
 if __name__ == "__main__":
-    # main("photovideo")
-    # main("shortthrowdepth")
-
-    p1 = multiprocessing.Process(target=main,args=("photovideo",),name="PV")
-    p2 = multiprocessing.Process(target=main,args=("shortthrowdepth",),name="ShortThrow")
-    p1.start()
-    p2.start()
-    p1.join()
-    p2.join()
-    print("done!")
+    args = parse_args()
+    host = args.host
+    sensor_type = args.type.lower()
+    if sensor_type == "all":
+        p1 = multiprocessing.Process(target=main,args=(host, "color",),name="ColorSensor")
+        p2 = multiprocessing.Process(target=main,args=(host, "depth",),name="DepthSensor")
+        p1.start()
+        p2.start()
+        p1.join()
+        p2.join()
+    else:
+        main(host=host, sensor_type=sensor_type)
