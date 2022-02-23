@@ -13,11 +13,14 @@ STREAM_PORTS = {
     "depth": 10081
 }
 
-SENSOR_STREAM_HEADER_FORMAT = "@qIIII"
-
+SENSOR_STREAM_HEADER_FORMAT = "@qIIIIffffffffffffffff"
 SENSOR_FRAME_STREAM_HEADER = namedtuple(
     'SensorFrameStreamHeader',
-    [ 'Timestamp', 'ImageWidth', 'ImageHeight', 'PixelStride', 'BytesLength']
+    [ 'Timestamp', 'ImageWidth', 'ImageHeight', 'PixelStride', 'BytesLength',
+    'CameraPoseM11', 'CameraPoseM12', 'CameraPoseM13', 'CameraPoseM14',
+    'CameraPoseM21', 'CameraPoseM22', 'CameraPoseM23', 'CameraPoseM24',
+    'CameraPoseM31', 'CameraPoseM32', 'CameraPoseM33', 'CameraPoseM34',
+    'CameraPoseM41', 'CameraPoseM42', 'CameraPoseM43', 'CameraPoseM44']
 )
 
 def parse_args():
@@ -59,18 +62,12 @@ def main(host, sensor_type):
 
             # Parse the header
             header = SENSOR_FRAME_STREAM_HEADER(*data)
-
-            # Record the meta data
-            timeStamp = header.Timestamp
-            imageHeight = header.ImageHeight
-            imageWidth = header.ImageWidth
-            pixelStride = header.PixelStride
-            bytesLength = header.BytesLength
+            # print("=> [INFO]: header\n",header)
 
             # Read the image in chunks
             image_data = b""
-            while len(image_data) < bytesLength:
-                remaining_bytes = bytesLength - len(image_data)
+            while len(image_data) < header.BytesLength:
+                remaining_bytes = header.BytesLength - len(image_data)
                 image_data_chunk = ss.recv(remaining_bytes)
                 if not image_data_chunk:
                     print('=> [ERROR]: Failed to receive image data')
@@ -78,21 +75,26 @@ def main(host, sensor_type):
                 image_data += image_data_chunk
 
             # Depth image
-            if pixelStride==2:
-                # image_array = np.frombuffer(image_data, dtype=np.uint16).copy().byteswap(True)
+            if header.PixelStride==2:
                 image_array = np.frombuffer(image_data, dtype=np.uint16).copy()
-                image_array = image_array.reshape((imageHeight, imageWidth, -1))
-                cv2.imwrite("./out/depth_{}.png".format(timeStamp), image_array)
-                image_array = cv2.applyColorMap(cv2.convertScaleAbs(image_array), cv2.COLORMAP_JET)
-                print("=> [INFO]: Depth image received: {} bits, {}".format(bytesLength, image_array.shape))
-            
+                image_array = image_array.reshape((header.ImageHeight, header.ImageWidth, -1))
+                cv2.imwrite("./out/depth_{}.png".format(header.Timestamp), image_array)
+                image_array  = cv2.applyColorMap(cv2.convertScaleAbs(image_array, alpha=0.03), cv2.COLORMAP_JET)
+                # print("=> [INFO]: Depth image received: {} bits, {}".format(header.BytesLength, image_array.shape))
+
             # Color image BGRA8
-            if pixelStride==4:
+            if header.PixelStride==4:
                 image_array = np.frombuffer(image_data, dtype=np.uint8).copy()
-                image_array = image_array.reshape((imageHeight, imageWidth, -1))
-                # image_array = cv2.cvtColor(image_array, cv2.COLOR_BGRA2BGR)
-                cv2.imwrite("./out/color_{}.png".format(timeStamp), image_array)
-                print("=> [INFO]: Color image received: {} bits, {}".format(bytesLength, image_array.shape))
+                image_array = image_array.reshape((header.ImageHeight, header.ImageWidth, -1))
+                cv2.imwrite("./out/color_{}.png".format(header.Timestamp), image_array)
+                # print("=> [INFO]: Color image received: {} bits, {}".format(header.BytesLength, image_array.shape))
+
+            # Color image BGR8
+            if header.PixelStride==3:
+                image_array = np.frombuffer(image_data, dtype=np.uint8).copy()
+                image_array = image_array.reshape((header.ImageHeight, header.ImageWidth, -1))
+                cv2.imwrite("./out/color_{}.png".format(header.Timestamp), image_array)
+                # print("=> [INFO]: Color image received: {} bits, {}".format(header.BytesLength, image_array.shape))
 
             # Display image
             cv2.imshow('Stream Preview', image_array)
