@@ -13,10 +13,11 @@ STREAM_PORTS = {
     "depth": 10081
 }
 
-SENSOR_STREAM_HEADER_FORMAT = "@qIIIIffffffffffffffff"
+SENSOR_STREAM_HEADER_FORMAT = "@qIIIIffffffffffffffffffff"
 SENSOR_FRAME_STREAM_HEADER = namedtuple(
     'SensorFrameStreamHeader',
     [ 'Timestamp', 'ImageWidth', 'ImageHeight', 'PixelStride', 'BytesLength',
+    'FocalLengthX','FocalLengthY','PrincipalPointX','PrincipalPointY',
     'CameraPoseM11', 'CameraPoseM12', 'CameraPoseM13', 'CameraPoseM14',
     'CameraPoseM21', 'CameraPoseM22', 'CameraPoseM23', 'CameraPoseM24',
     'CameraPoseM31', 'CameraPoseM32', 'CameraPoseM33', 'CameraPoseM34',
@@ -64,6 +65,9 @@ def main(host, sensor_type):
             header = SENSOR_FRAME_STREAM_HEADER(*data)
             # print("=> [INFO]: header\n",header)
 
+            print("Instrinsics:")
+            print(header.FocalLengthX, header.FocalLengthY, header.PrincipalPointX, header.PrincipalPointY)
+
             # Read the image in chunks
             image_data = b""
             while len(image_data) < header.BytesLength:
@@ -78,7 +82,7 @@ def main(host, sensor_type):
             if header.PixelStride==2:
                 image_array = np.frombuffer(image_data, dtype=np.uint16).copy()
                 image_array = image_array.reshape((header.ImageHeight, header.ImageWidth, -1))
-                cv2.imwrite("./out/depth_{}.png".format(header.Timestamp), image_array)
+                # cv2.imwrite("./out/depth_{}.png".format(header.Timestamp), image_array)
                 image_array  = cv2.applyColorMap(cv2.convertScaleAbs(image_array, alpha=0.03), cv2.COLORMAP_JET)
                 # print("=> [INFO]: Depth image received: {} bits, {}".format(header.BytesLength, image_array.shape))
 
@@ -86,14 +90,14 @@ def main(host, sensor_type):
             if header.PixelStride==4:
                 image_array = np.frombuffer(image_data, dtype=np.uint8).copy()
                 image_array = image_array.reshape((header.ImageHeight, header.ImageWidth, -1))
-                cv2.imwrite("./out/color_{}.png".format(header.Timestamp), image_array)
+                # cv2.imwrite("./out/color_{}.png".format(header.Timestamp), image_array)
                 # print("=> [INFO]: Color image received: {} bits, {}".format(header.BytesLength, image_array.shape))
 
             # Color image BGR8
             if header.PixelStride==3:
                 image_array = np.frombuffer(image_data, dtype=np.uint8).copy()
                 image_array = image_array.reshape((header.ImageHeight, header.ImageWidth, -1))
-                cv2.imwrite("./out/color_{}.png".format(header.Timestamp), image_array)
+                # cv2.imwrite("./out/color_{}.png".format(header.Timestamp), image_array)
                 # print("=> [INFO]: Color image received: {} bits, {}".format(header.BytesLength, image_array.shape))
 
             # Display image

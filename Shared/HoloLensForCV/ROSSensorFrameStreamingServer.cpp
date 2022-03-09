@@ -84,6 +84,11 @@ namespace HoloLensForCV
         Windows::Foundation::IMemoryBufferReference^ bitmapBufferReference;
         Windows::Foundation::Numerics::float4x4 cameraPose;
 
+        // Intrinsics
+        Windows::Media::Devices::Core::CameraIntrinsics^ cameraIntrinsics;
+        Windows::Foundation::Numerics::float4 intrinsics;
+        
+
         Platform::Array<uint8_t>^ imageBufferAsPlatformArray;
         uint32_t imageBufferSize = 0;
 
@@ -103,6 +108,22 @@ namespace HoloLensForCV
 
         {
             bitmap = sensorFrame->SoftwareBitmap;
+
+            intrinsics.zero();
+            cameraIntrinsics = sensorFrame->CoreCameraIntrinsics;
+            if (nullptr != cameraIntrinsics)
+            {
+                intrinsics.x = resizeScale * cameraIntrinsics->FocalLength.x;
+                intrinsics.y = resizeScale * cameraIntrinsics->FocalLength.y;
+                intrinsics.z = resizeScale * cameraIntrinsics->PrincipalPoint.x;
+                intrinsics.w = resizeScale * cameraIntrinsics->PrincipalPoint.y;
+            }
+//#if DBG_ENABLE_INFORMATIONAL_LOGGING
+//            dbg::trace(L"intrinsics:\n fx=%f\n fy=%f\n ppx=%f\n ppy=%f",
+//                intrinsics.x, intrinsics.y, intrinsics.z, intrinsics.w
+//            );
+//#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
+            
 
             bitmapBuffer =
                 bitmap->LockBuffer(
@@ -180,7 +201,11 @@ namespace HoloLensForCV
             _writer->WriteUInt32(wrappedImage.rows);
             _writer->WriteUInt32(wrappedImage.elemSize());
             _writer->WriteUInt32(imageBufferSize);
-            WriteFloat4x4(cameraPose, _writer);
+            _writer->WriteSingle(intrinsics.x); // fx
+            _writer->WriteSingle(intrinsics.x); // fy
+            _writer->WriteSingle(intrinsics.x); // ppx
+            _writer->WriteSingle(intrinsics.x); // ppy
+            WriteFloat4x4(cameraPose, _writer); // 
             //WriteFloat4x4(sensorFrame->FrameToOrigin, _writer);
             //WriteFloat4x4(sensorFrame->CameraViewTransform, _writer);
             //WriteFloat4x4(sensorFrame->CameraProjectionTransform, _writer);
