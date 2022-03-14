@@ -202,9 +202,9 @@ namespace HoloLensForCV
             _writer->WriteUInt32(wrappedImage.elemSize());
             _writer->WriteUInt32(imageBufferSize);
             _writer->WriteSingle(intrinsics.x); // fx
-            _writer->WriteSingle(intrinsics.x); // fy
-            _writer->WriteSingle(intrinsics.x); // ppx
-            _writer->WriteSingle(intrinsics.x); // ppy
+            _writer->WriteSingle(intrinsics.y); // fy
+            _writer->WriteSingle(intrinsics.z); // ppx
+            _writer->WriteSingle(intrinsics.w); // ppy
             WriteFloat4x4(cameraPose, _writer); // 
             //WriteFloat4x4(sensorFrame->FrameToOrigin, _writer);
             //WriteFloat4x4(sensorFrame->CameraViewTransform, _writer);
