@@ -96,6 +96,14 @@ namespace HoloLensForCV
         cv::Mat wrappedImage;
         double_t resizeScale = 0.5;
 
+        ULARGE_INTEGER TempULargeInt;
+        FILETIME TempFileTime;
+        TempULargeInt.QuadPart = sensorFrame->Timestamp.UniversalTime;
+        TempFileTime.dwHighDateTime = TempULargeInt.HighPart;
+        TempFileTime.dwLowDateTime = TempULargeInt.LowPart;
+        //Io::HundredsOfNanoseconds timestamp = Io::UniversalToUnixTime(TempFileTime).count();
+        int64_t timestamp = Io::UniversalToUnixTime(TempFileTime).count();
+
         cameraPose = GetAbsoluteCameraPose(sensorFrame);
 //#if DBG_ENABLE_INFORMATIONAL_LOGGING
 //        dbg::trace(L"CameraPose:\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f",
@@ -196,7 +204,8 @@ namespace HoloLensForCV
         _writeInProgress = true;
 
         {
-            _writer->WriteUInt64(sensorFrame->Timestamp.UniversalTime);
+            //_writer->WriteUInt64(sensorFrame->Timestamp.UniversalTime);
+            _writer->WriteUInt64(timestamp);
             _writer->WriteUInt32(wrappedImage.cols);
             _writer->WriteUInt32(wrappedImage.rows);
             _writer->WriteUInt32(wrappedImage.elemSize());
