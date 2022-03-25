@@ -101,7 +101,7 @@ namespace HoloLensForCV
         TempULargeInt.QuadPart = sensorFrame->Timestamp.UniversalTime;
         TempFileTime.dwHighDateTime = TempULargeInt.HighPart;
         TempFileTime.dwLowDateTime = TempULargeInt.LowPart;
-        //Io::HundredsOfNanoseconds timestamp = Io::UniversalToUnixTime(TempFileTime).count();
+        //Io::HundredsOfNanoseconds timestamp = Io::UniversalToUnixTime(TempFileTime);
         int64_t timestamp = Io::UniversalToUnixTime(TempFileTime).count();
 
         cameraPose = GetAbsoluteCameraPose(sensorFrame);
