@@ -204,8 +204,8 @@ namespace HoloLensForCV
         _writeInProgress = true;
 
         {
-            //_writer->WriteUInt64(sensorFrame->Timestamp.UniversalTime);
-            _writer->WriteUInt64(timestamp);
+            _writer->WriteUInt64(sensorFrame->Timestamp.UniversalTime);
+            //_writer->WriteUInt64(timestamp);
             _writer->WriteUInt32(wrappedImage.cols);
             _writer->WriteUInt32(wrappedImage.rows);
             _writer->WriteUInt32(wrappedImage.elemSize());
