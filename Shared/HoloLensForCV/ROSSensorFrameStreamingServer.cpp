@@ -80,31 +80,32 @@ namespace HoloLensForCV
 #endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
 
         Windows::Graphics::Imaging::SoftwareBitmap^ bitmap;
-        Windows::Graphics::Imaging::BitmapBuffer^ bitmapBuffer;
+        //Windows::Graphics::Imaging::BitmapBuffer^ bitmapBuffer;
         Windows::Foundation::IMemoryBufferReference^ bitmapBufferReference;
-        Windows::Foundation::Numerics::float4x4 cameraPose;
+        //Windows::Foundation::Numerics::float4x4 cameraPose;
 
         // Intrinsics
-        Windows::Media::Devices::Core::CameraIntrinsics^ cameraIntrinsics;
-        Windows::Foundation::Numerics::float4 intrinsics;
+        //Windows::Media::Devices::Core::CameraIntrinsics^ cameraIntrinsics;
+        //Windows::Foundation::Numerics::float4 intrinsics;
         
 
-        Platform::Array<uint8_t>^ imageBufferAsPlatformArray;
+        //Platform::Array<uint8_t>^ imageBufferAsPlatformArray;
+        Platform::Array<byte>^ imageBufferAsPlatformArray;
         uint32_t imageBufferSize = 0;
 
         // for OpenCV
         cv::Mat wrappedImage;
         double_t resizeScale = 0.5;
 
-        ULARGE_INTEGER TempULargeInt;
-        FILETIME TempFileTime;
-        TempULargeInt.QuadPart = sensorFrame->Timestamp.UniversalTime;
-        TempFileTime.dwHighDateTime = TempULargeInt.HighPart;
-        TempFileTime.dwLowDateTime = TempULargeInt.LowPart;
+        //ULARGE_INTEGER TempULargeInt;
+        //FILETIME TempFileTime;
+        //TempULargeInt.QuadPart = sensorFrame->Timestamp.UniversalTime;
+        //TempFileTime.dwHighDateTime = TempULargeInt.HighPart;
+        //TempFileTime.dwLowDateTime = TempULargeInt.LowPart;
         //Io::HundredsOfNanoseconds timestamp = Io::UniversalToUnixTime(TempFileTime);
-        int64_t timestamp = Io::UniversalToUnixTime(TempFileTime).count();
+        //int64_t timestamp = Io::UniversalToUnixTime(TempFileTime).count();
 
-        cameraPose = GetAbsoluteCameraPose(sensorFrame);
+        //cameraPose = GetAbsoluteCameraPose(sensorFrame);
 //#if DBG_ENABLE_INFORMATIONAL_LOGGING
 //        dbg::trace(L"CameraPose:\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f",
 //            cameraPose.m11, cameraPose.m12, cameraPose.m13, cameraPose.m14,
@@ -117,15 +118,15 @@ namespace HoloLensForCV
         {
             bitmap = sensorFrame->SoftwareBitmap;
 
-            intrinsics.zero();
-            cameraIntrinsics = sensorFrame->CoreCameraIntrinsics;
-            if (nullptr != cameraIntrinsics)
-            {
-                intrinsics.x = resizeScale * cameraIntrinsics->FocalLength.x;
-                intrinsics.y = resizeScale * cameraIntrinsics->FocalLength.y;
-                intrinsics.z = resizeScale * cameraIntrinsics->PrincipalPoint.x;
-                intrinsics.w = resizeScale * cameraIntrinsics->PrincipalPoint.y;
-            }
+//            intrinsics.zero();
+//            cameraIntrinsics = sensorFrame->CoreCameraIntrinsics;
+//            if (nullptr != cameraIntrinsics)
+//            {
+//                intrinsics.x = resizeScale * cameraIntrinsics->FocalLength.x;
+//                intrinsics.y = resizeScale * cameraIntrinsics->FocalLength.y;
+//                intrinsics.z = resizeScale * cameraIntrinsics->PrincipalPoint.x;
+//                intrinsics.w = resizeScale * cameraIntrinsics->PrincipalPoint.y;
+//            }
 //#if DBG_ENABLE_INFORMATIONAL_LOGGING
 //            dbg::trace(L"intrinsics:\n fx=%f\n fy=%f\n ppx=%f\n ppy=%f",
 //                intrinsics.x, intrinsics.y, intrinsics.z, intrinsics.w
@@ -133,15 +134,24 @@ namespace HoloLensForCV
 //#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
             
 
-            bitmapBuffer =
+            //bitmapBuffer =
+            //    bitmap->LockBuffer(
+            //        Windows::Graphics::Imaging::BitmapBufferAccessMode::Read);
+
+            bitmapBufferReference = 
                 bitmap->LockBuffer(
-                    Windows::Graphics::Imaging::BitmapBufferAccessMode::Read);
+                    Windows::Graphics::Imaging::BitmapBufferAccessMode::Read)->CreateReference();
 
-            uint8_t* bitmapBufferData =
-                Io::GetTypedPointerToMemoryBuffer<uint8_t>(
-                    bitmapBuffer->CreateReference(),
+            //uint8_t* bitmapBufferData =
+            //    Io::GetTypedPointerToMemoryBuffer<uint8_t>(
+            //        bitmapBuffer->CreateReference(),
+            //        imageBufferSize);
+
+            byte* bitmapBufferData =
+                Io::GetTypedPointerToMemoryBuffer<byte>(
+                    bitmapBufferReference,
                     imageBufferSize);
-
+            
             switch (bitmap->BitmapPixelFormat)
             {
 
@@ -152,17 +162,14 @@ namespace HoloLensForCV
                         CV_8UC4,
                         bitmapBufferData);
 
-                    cv::resize(
-                        wrappedImage, wrappedImage, 
-                        cv::Size(), resizeScale, resizeScale, 
-                        cv::INTER_LINEAR);
-
                     cv::cvtColor(
-                        wrappedImage, wrappedImage, 
+                        wrappedImage, wrappedImage,
                         cv::COLOR_BGRA2BGR);
 
-                    imageBufferSize = 
-                        wrappedImage.total() * wrappedImage.elemSize();
+                    cv::resize(
+                        wrappedImage, wrappedImage,
+                        cv::Size(), resizeScale, resizeScale,
+                        cv::INTER_LINEAR);
                     
                     break;
 
@@ -185,8 +192,14 @@ namespace HoloLensForCV
                     break;
             }
 
+            imageBufferSize = wrappedImage.step * wrappedImage.rows;
+            //imageBufferAsPlatformArray =
+            //    ref new Platform::Array<uint8_t>(
+            //        wrappedImage.data,
+            //        imageBufferSize);
+
             imageBufferAsPlatformArray =
-                ref new Platform::Array<uint8_t>(
+                ref new Platform::Array<byte>(
                     wrappedImage.data,
                     imageBufferSize);
         }
@@ -204,21 +217,28 @@ namespace HoloLensForCV
         _writeInProgress = true;
 
         {
-            _writer->WriteUInt64(sensorFrame->Timestamp.UniversalTime);
-            //_writer->WriteUInt64(timestamp);
-            _writer->WriteUInt32(wrappedImage.cols);
-            _writer->WriteUInt32(wrappedImage.rows);
-            _writer->WriteUInt32(wrappedImage.elemSize());
-            _writer->WriteUInt32(imageBufferSize);
-            _writer->WriteSingle(intrinsics.x); // fx
-            _writer->WriteSingle(intrinsics.y); // fy
-            _writer->WriteSingle(intrinsics.z); // ppx
-            _writer->WriteSingle(intrinsics.w); // ppy
-            WriteFloat4x4(cameraPose, _writer); // 
-            //WriteFloat4x4(sensorFrame->FrameToOrigin, _writer);
-            //WriteFloat4x4(sensorFrame->CameraViewTransform, _writer);
-            //WriteFloat4x4(sensorFrame->CameraProjectionTransform, _writer);
-            _writer->WriteBytes(imageBufferAsPlatformArray);
+            /*
+            A 64-bit signed integer that represents a point in time 
+            as the number of 100-nanosecond intervals
+            prior to or after midnight on January 1, 1601 
+            (according to the Gregorian Calendar)
+            */
+            _writer->WriteInt64(int64_t(sensorFrame->Timestamp.UniversalTime));  // Timestamp
+            _writer->WriteUInt32(uint32_t(wrappedImage.cols));    // Width
+            _writer->WriteUInt32(uint32_t(wrappedImage.rows));    // Height
+            //_writer->WriteUInt32(wrappedImage.elemSize());
+            _writer->WriteUInt32(uint32_t(wrappedImage.step));    // Number of bytes each matrix row occupies.
+            _writer->WriteUInt32(uint32_t(bitmap->BitmapPixelFormat));   // PixelFormat
+            //_writer->WriteUInt32(imageBufferSize);  // ImageBufferSize
+            //_writer->WriteSingle(intrinsics.x); // fx
+            //_writer->WriteSingle(intrinsics.y); // fy
+            //_writer->WriteSingle(intrinsics.z); // ppx
+            //_writer->WriteSingle(intrinsics.w); // ppy
+            //WriteFloat4x4(cameraPose, _writer);
+            WriteFloat4x4(sensorFrame->FrameToOrigin, _writer); // FrameToOrigin (Float4x4)
+            WriteFloat4x4(sensorFrame->CameraViewTransform, _writer);   // CameraViewTransform (Float4x4)
+            WriteFloat4x4(sensorFrame->CameraProjectionTransform, _writer); // CameraProjectionTransform (Float4x4)
+            _writer->WriteBytes(imageBufferAsPlatformArray);    // Image BytesArray
         }
 
         Concurrency::create_task(_writer->StoreAsync()).then(
