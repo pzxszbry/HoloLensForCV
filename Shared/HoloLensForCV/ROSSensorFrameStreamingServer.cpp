@@ -7,6 +7,7 @@ namespace HoloLensForCV
         _In_ Platform::String^ serviceName)
         : _writeInProgress(false)
     {
+        // Initialize a TCP stream socket listener for incoming network 
         _listener = ref new Windows::Networking::Sockets::StreamSocketListener();
 
         _listener->ConnectionReceived +=
@@ -53,7 +54,7 @@ namespace HoloLensForCV
         {
             _writer = ref new Windows::Storage::Streams::DataWriter(_socket->OutputStream);
             _writer->UnicodeEncoding = Windows::Storage::Streams::UnicodeEncoding::Utf8;
-            _writer->ByteOrder = Windows::Storage::Streams::ByteOrder::LittleEndian;
+            _writer->ByteOrder = Windows::Storage::Streams::ByteOrder::LittleEndian;    // Check Ubuntu ByteOrder with `lscpu | grep "Byte Order"`
             _writeInProgress = false;
         }
     }
@@ -78,18 +79,14 @@ namespace HoloLensForCV
             L"ROSSensorFrameStreamingServer::Send: buffer prepare operation",
             10.0 /* minimum_time_elapsed_in_milliseconds */);
 #endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-
+        std::chrono::nanoseconds currTimestamp = 
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::system_clock::now().time_since_epoch());   // use current nano seconds as timestamp (already in Unix epoch)
         Windows::Graphics::Imaging::SoftwareBitmap^ bitmap;
-        //Windows::Graphics::Imaging::BitmapBuffer^ bitmapBuffer;
         Windows::Foundation::IMemoryBufferReference^ bitmapBufferReference;
-        //Windows::Foundation::Numerics::float4x4 cameraPose;
 
-        // Intrinsics
-        //Windows::Media::Devices::Core::CameraIntrinsics^ cameraIntrinsics;
-        //Windows::Foundation::Numerics::float4 intrinsics;
         
 
-        //Platform::Array<uint8_t>^ imageBufferAsPlatformArray;
         Platform::Array<byte>^ imageBufferAsPlatformArray;
         uint32_t imageBufferSize = 0;
 
@@ -97,55 +94,12 @@ namespace HoloLensForCV
         cv::Mat wrappedImage;
         double_t resizeScale = 0.5;
 
-        //ULARGE_INTEGER TempULargeInt;
-        //FILETIME TempFileTime;
-        //TempULargeInt.QuadPart = sensorFrame->Timestamp.UniversalTime;
-        //TempFileTime.dwHighDateTime = TempULargeInt.HighPart;
-        //TempFileTime.dwLowDateTime = TempULargeInt.LowPart;
-        //Io::HundredsOfNanoseconds timestamp = Io::UniversalToUnixTime(TempFileTime);
-        //int64_t timestamp = Io::UniversalToUnixTime(TempFileTime).count();
-
-        //cameraPose = GetAbsoluteCameraPose(sensorFrame);
-//#if DBG_ENABLE_INFORMATIONAL_LOGGING
-//        dbg::trace(L"CameraPose:\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f",
-//            cameraPose.m11, cameraPose.m12, cameraPose.m13, cameraPose.m14,
-//            cameraPose.m21, cameraPose.m22, cameraPose.m23, cameraPose.m24,
-//            cameraPose.m31, cameraPose.m32, cameraPose.m33, cameraPose.m34,
-//            cameraPose.m41, cameraPose.m42, cameraPose.m43, cameraPose.m44
-//        );
-//#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-
         {
             bitmap = sensorFrame->SoftwareBitmap;
-
-//            intrinsics.zero();
-//            cameraIntrinsics = sensorFrame->CoreCameraIntrinsics;
-//            if (nullptr != cameraIntrinsics)
-//            {
-//                intrinsics.x = resizeScale * cameraIntrinsics->FocalLength.x;
-//                intrinsics.y = resizeScale * cameraIntrinsics->FocalLength.y;
-//                intrinsics.z = resizeScale * cameraIntrinsics->PrincipalPoint.x;
-//                intrinsics.w = resizeScale * cameraIntrinsics->PrincipalPoint.y;
-//            }
-//#if DBG_ENABLE_INFORMATIONAL_LOGGING
-//            dbg::trace(L"intrinsics:\n fx=%f\n fy=%f\n ppx=%f\n ppy=%f",
-//                intrinsics.x, intrinsics.y, intrinsics.z, intrinsics.w
-//            );
-//#endif /* DBG_ENABLE_INFORMATIONAL_LOGGING */
-            
-
-            //bitmapBuffer =
-            //    bitmap->LockBuffer(
-            //        Windows::Graphics::Imaging::BitmapBufferAccessMode::Read);
 
             bitmapBufferReference = 
                 bitmap->LockBuffer(
                     Windows::Graphics::Imaging::BitmapBufferAccessMode::Read)->CreateReference();
-
-            //uint8_t* bitmapBufferData =
-            //    Io::GetTypedPointerToMemoryBuffer<uint8_t>(
-            //        bitmapBuffer->CreateReference(),
-            //        imageBufferSize);
 
             byte* bitmapBufferData =
                 Io::GetTypedPointerToMemoryBuffer<byte>(
@@ -193,10 +147,6 @@ namespace HoloLensForCV
             }
 
             imageBufferSize = wrappedImage.step * wrappedImage.rows;
-            //imageBufferAsPlatformArray =
-            //    ref new Platform::Array<uint8_t>(
-            //        wrappedImage.data,
-            //        imageBufferSize);
 
             imageBufferAsPlatformArray =
                 ref new Platform::Array<byte>(
@@ -223,18 +173,12 @@ namespace HoloLensForCV
             prior to or after midnight on January 1, 1601 
             (according to the Gregorian Calendar)
             */
-            _writer->WriteInt64(int64_t(sensorFrame->Timestamp.UniversalTime));  // Timestamp
+            //_writer->WriteInt64(int64_t(sensorFrame->Timestamp.UniversalTime));  // Timestamp
+            _writer->WriteInt64(int64_t(currTimestamp.count()));  // Timestamp
             _writer->WriteUInt32(uint32_t(wrappedImage.cols));    // Width
             _writer->WriteUInt32(uint32_t(wrappedImage.rows));    // Height
-            //_writer->WriteUInt32(wrappedImage.elemSize());
             _writer->WriteUInt32(uint32_t(wrappedImage.step));    // Number of bytes each matrix row occupies.
             _writer->WriteUInt32(uint32_t(bitmap->BitmapPixelFormat));   // PixelFormat
-            //_writer->WriteUInt32(imageBufferSize);  // ImageBufferSize
-            //_writer->WriteSingle(intrinsics.x); // fx
-            //_writer->WriteSingle(intrinsics.y); // fy
-            //_writer->WriteSingle(intrinsics.z); // ppx
-            //_writer->WriteSingle(intrinsics.w); // ppy
-            //WriteFloat4x4(cameraPose, _writer);
             WriteFloat4x4(sensorFrame->FrameToOrigin, _writer); // FrameToOrigin (Float4x4)
             WriteFloat4x4(sensorFrame->CameraViewTransform, _writer);   // CameraViewTransform (Float4x4)
             WriteFloat4x4(sensorFrame->CameraProjectionTransform, _writer); // CameraProjectionTransform (Float4x4)
@@ -261,35 +205,12 @@ namespace HoloLensForCV
             });
     }
 
-    Windows::Foundation::Numerics::float4x4 ROSSensorFrameStreamingServer::GetAbsoluteCameraPoseForPV(HoloLensForCV::SensorFrame^ frame) 
+    Windows::Foundation::Numerics::float4x4 
+        ROSSensorFrameStreamingServer::GetAbsoluteCameraPose(HoloLensForCV::SensorFrame^ frame)
     {
-        Windows::Foundation::Numerics::float4x4 InvFrameToOrigin;
-        Windows::Foundation::Numerics::invert(frame->FrameToOrigin, &InvFrameToOrigin);
-
-        auto pose = frame->CameraProjectionTransform * frame->CameraViewTransform * InvFrameToOrigin;
-
-        return pose;
-    }
-
-    Windows::Foundation::Numerics::float4x4 ROSSensorFrameStreamingServer::GetAbsoluteCameraPoseForDepth(HoloLensForCV::SensorFrame^ frame) 
-    {
-        Windows::Foundation::Numerics::float4x4 interm;
-        memset(&interm, 0, sizeof(interm));
-        interm.m11 = 1; interm.m22 = 1; interm.m33 = 1; interm.m44 = 1;
-
-        Windows::Foundation::Numerics::float4x4 InvFrameToOrigin;
-        Windows::Foundation::Numerics::invert(frame->FrameToOrigin, &InvFrameToOrigin);
-
-        auto pose = interm * frame->CameraViewTransform * InvFrameToOrigin;
-
-        return pose;
-    }
-
-    Windows::Foundation::Numerics::float4x4 ROSSensorFrameStreamingServer::GetAbsoluteCameraPose(HoloLensForCV::SensorFrame^ frame)
-    {
-        Windows::Foundation::Numerics::float4x4 interm;
-        memset(&interm, 0, sizeof(interm));
-        interm.m11 = 1; interm.m22 = 1; interm.m33 = 1; interm.m44 = 1;
+        Windows::Foundation::Numerics::float4x4 interm = Windows::Foundation::Numerics::float4x4::identity();
+        //memset(&interm, 0, sizeof(interm));
+        //interm.m11 = 1; interm.m22 = 1; interm.m33 = 1; interm.m44 = 1;
 
         Windows::Foundation::Numerics::float4x4 InvFrameToOrigin;
         Windows::Foundation::Numerics::invert(frame->FrameToOrigin, &InvFrameToOrigin);

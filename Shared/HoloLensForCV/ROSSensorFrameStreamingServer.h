@@ -33,5 +33,6 @@ namespace HoloLensForCV
         Windows::Storage::Streams::DataWriter^ _writer;
         bool _writeInProgress;
         Windows::Foundation::DateTime _previousTimestamp;
+        //Io::TimeConverter _timeConverter;
     };
 }
