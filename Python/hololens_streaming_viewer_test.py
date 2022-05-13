@@ -1,12 +1,14 @@
 from datetime import datetime
-import sys, os
+import sys
+import os
 import argparse
 import socket
 import struct
 from collections import namedtuple
 import cv2
 import numpy as np
-import time, datetime
+import time
+import datetime
 import logging
 
 # Logging config
@@ -18,7 +20,7 @@ STREAM_PORTS = {"color": 10080, "depth": 10081}
 VIEW_DEPTH_DISTANCE = 2.0
 cv_alpha = 255 / (VIEW_DEPTH_DISTANCE * 1000)
 """
-- ImageEncoding type: 
+- ImageEncoding type:
 reference: https://docs.microsoft.com/en-us/uwp/api/Windows.Graphics.Imaging.BitmapPixelFormat?view=winrt-17763#fields
     Bgra8    87  The pixel format is B8G8R8A8 unsigned integer.
     Gray16  57  The pixel format is 16 bpp grayscale.
@@ -91,7 +93,8 @@ def main(host, sensor_type):
             ss = create_socket()
             try:
                 ss.connect((host, port))
-                print("=> [INFO] Connection success... ({}:{})".format(host, port))
+                print(
+                    "=> [INFO] Connection success... ({}:{})".format(host, port))
                 pass
             except Exception:
                 ss.close()
@@ -124,7 +127,8 @@ def main(host, sensor_type):
                 logging.debug("Header: {}".format(header))
                 logging.info(
                     "TimeStamp: {}".format(
-                        datetime.datetime.fromtimestamp(header.Timestamp / 1000000000)
+                        datetime.datetime.fromtimestamp(
+                            header.Timestamp / 1000000000)
                     )
                 )
 
@@ -135,7 +139,8 @@ def main(host, sensor_type):
                     ss.close()
                     break
                 FrameToOrigin = (
-                    np.frombuffer(data, dtype=np.float32).reshape((4, 4)).transpose()
+                    np.frombuffer(data, dtype=np.float32).reshape(
+                        (4, 4)).transpose()
                 )
                 # print("FrameToOrigin", FrameToOrigin, sep="\n")
                 logging.debug("FrameToOrigin:\n{}".format(FrameToOrigin))
@@ -147,10 +152,12 @@ def main(host, sensor_type):
                     ss.close()
                     break
                 CameraViewTransform = (
-                    np.frombuffer(data, dtype=np.float32).reshape((4, 4)).transpose()
+                    np.frombuffer(data, dtype=np.float32).reshape(
+                        (4, 4)).transpose()
                 )
                 # print("CameraViewTransform", CameraViewTransform, sep="\n")
-                logging.debug("CameraViewTransform:\n{}".format(CameraViewTransform))
+                logging.debug("CameraViewTransform:\n{}".format(
+                    CameraViewTransform))
 
                 # Receive the FrameToOrigin Matrix
                 try:
@@ -159,15 +166,18 @@ def main(host, sensor_type):
                     ss.close()
                     break
                 CameraProjectionTransform = (
-                    np.frombuffer(data, dtype=np.float32).reshape((4, 4)).transpose()
+                    np.frombuffer(data, dtype=np.float32).reshape(
+                        (4, 4)).transpose()
                 )
                 logging.debug(
-                    "CameraProjectionTransform:\n{}".format(CameraProjectionTransform)
+                    "CameraProjectionTransform:\n{}".format(
+                        CameraProjectionTransform)
                 )
 
                 # Read the image in chunks
                 try:
-                    image_data = receive_data(ss, header.ImageHeight * header.ImageStep)
+                    image_data = receive_data(
+                        ss, header.ImageHeight * header.ImageStep)
                 except Exception:
                     ss.close()
                     break
