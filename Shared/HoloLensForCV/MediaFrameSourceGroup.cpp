@@ -484,6 +484,8 @@ namespace HoloLensForCV
         }
     }
 
+    int fps = 0;
+
     Platform::String^ MediaFrameSourceGroup::GetSubtypeForFrameReader(
         Windows::Media::Capture::Frames::MediaFrameSourceKind kind,
         Windows::Media::Capture::Frames::MediaFrameFormat^ format)
@@ -494,13 +496,17 @@ namespace HoloLensForCV
         //
         switch (kind)
         {
+            
         case Windows::Media::Capture::Frames::MediaFrameSourceKind::Color:
             //
             // For color sources, we accept anything and request that it be converted to Bgra8.
             //
             //return Windows::Media::MediaProperties::MediaEncodingSubtypes::Bgra8;
             //if (format->VideoFormat->Width == 1280 && format->VideoFormat->Height == 720)
-            if (format->VideoFormat->Width == 896 && format->VideoFormat->Height == 504)
+            //if (format->VideoFormat->Width == 896 && format->VideoFormat->Height == 504)
+            //if (format->VideoFormat->Width == 1344 && format->VideoFormat->Height == 756)
+            fps = format->FrameRate->Numerator / format->FrameRate->Denominator;
+            if (format->VideoFormat->Width == 1344 && format->VideoFormat->Height == 756 && fps <= 15)
                 //if (true)
             {
 #if DBG_ENABLE_INFORMATIONAL_LOGGING
